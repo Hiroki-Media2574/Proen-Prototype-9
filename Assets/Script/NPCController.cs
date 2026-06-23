@@ -1,9 +1,12 @@
 using UnityEngine;
+using TMPro;
 
 public class NPCController : MonoBehaviour
 {
     public Transform target;
     public float maxDistance = 0.0f;
+    public TextMeshProUGUI MessageText;
+
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {

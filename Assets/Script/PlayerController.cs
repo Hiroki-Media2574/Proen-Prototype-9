@@ -8,9 +8,12 @@ public class PlayerController : MonoBehaviour
     Rigidbody rb;
     public float moveSpeed = 0.0f;
     public float dashSpeed = 0.0f;
+    public TextMeshProUGUI ActionText;
+    public TextMeshProUGUI MessageText;
     private float Speed = 0.0f;
     int jumpCount = 0;
     private bool isGrounded = true;
+    private bool isRangeNPC = false;
     private Renderer playerRenderer;
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -40,7 +43,7 @@ public class PlayerController : MonoBehaviour
 
     void FixedUpdate()
     {
-        Debug.Log("ok");
+        //Debug.Log("ok");
         float h = Input.GetAxis("Horizontal");
         float v = Input.GetAxis("Vertical");
         /*if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
@@ -53,6 +56,12 @@ public class PlayerController : MonoBehaviour
             moveSpeed = 0.4f;
         }*/
         transform.Translate(h * Speed, 0, v * Speed);
+        if (isRangeNPC && Keyboard.current.eKey.isPressed)
+        {
+            Debug.Log("E Pressed");
+            ActionText.text = "";
+            MessageText.text = "Good job!";
+        }
     }
 
     private void OnCollisionEnter(Collision collision)
@@ -68,6 +77,24 @@ public class PlayerController : MonoBehaviour
         if (collision.gameObject.CompareTag("Ground"))
         {
             isGrounded = false;
+        }
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.gameObject.CompareTag("Action"))
+        {
+            ActionText.text = "Press E key!";
+            isRangeNPC = true;
+        }
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        if (other.gameObject.CompareTag("Action"))
+        {
+            ActionText.text = "";
+            MessageText.text = "";
         }
     }
 }
