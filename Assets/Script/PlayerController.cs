@@ -10,6 +10,7 @@ public class PlayerController : MonoBehaviour
     public float dashSpeed = 0.0f;
     public TextMeshProUGUI ActionText;
     public TextMeshProUGUI MessageText;
+    public GameObject bulletObject;
     private float Speed = 0.0f;
     int jumpCount = 0;
     private bool isGrounded = true;
@@ -21,6 +22,7 @@ public class PlayerController : MonoBehaviour
         rb = GetComponent<Rigidbody>();
         playerRenderer = GetComponent<Renderer>();
         Speed = moveSpeed;
+        bulletObject.SetActive(false);
     }
 
     // Update is called once per frame
@@ -87,14 +89,23 @@ public class PlayerController : MonoBehaviour
             ActionText.text = "Press E key!";
             isRangeNPC = true;
         }
+        if (other.gameObject.CompareTag("Item"))
+        {
+            ActionText.text = "Pick E key";
+            if(Keyboard.current.eKey.isPressed)
+            {
+                ActionText.text = "";
+                MessageText.text = "";
+                Destroy(other.gameObject);
+                bulletObject.SetActive(true);
+            }
+            //isRangeNPC = true;
+        }
     }
 
     private void OnTriggerExit(Collider other)
     {
-        if (other.gameObject.CompareTag("Action"))
-        {
-            ActionText.text = "";
-            MessageText.text = "";
-        }
+        ActionText.text = "";
+        MessageText.text = "";
     }
 }
