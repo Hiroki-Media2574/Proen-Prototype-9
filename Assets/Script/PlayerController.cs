@@ -10,12 +10,18 @@ public class PlayerController : MonoBehaviour
     public float dashSpeed = 0.0f;
     public TextMeshProUGUI ActionText;
     public TextMeshProUGUI MessageText;
+    public TextMeshProUGUI PickText;
+    public TextMeshProUGUI SuccessText;
+    public TextMeshProUGUI MPText;
     public GameObject bulletObject;
     private float Speed = 0.0f;
     int jumpCount = 0;
     private bool isGrounded = true;
     private bool isRangeNPC = false;
     private Renderer playerRenderer;
+    private int haveBall = 0;
+    private int success = 0;
+    public static float MP = 100;
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
@@ -28,19 +34,20 @@ public class PlayerController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
+        if (Input.GetKeyDown(KeyCode.Space) && isGrounded)              //スペースを押すとジャンプする
         {
             rb.AddForce(Vector3.up * 7f, ForceMode.Impulse);
             isGrounded = false;
         }
-        if (Input.GetKeyDown(KeyCode.LeftShift))
+        if (Input.GetKeyDown(KeyCode.LeftShift))                        //左シフトを押している時
         {
-            Speed = dashSpeed;
+            Speed = dashSpeed;                                          //Speedに走る速度dashSpeedを入れる。
         }
-        if (Input.GetKeyUp(KeyCode.LeftShift))
+        if (Input.GetKeyUp(KeyCode.LeftShift))                          //左シフトを押していない時
         {
-            Speed = moveSpeed;
+            Speed = moveSpeed;                                          //Speedに歩く速度moveSpeedを入れる。
         }
+        MPText.text = "MP  :  " + MP;
     }
 
     void FixedUpdate()
@@ -58,11 +65,13 @@ public class PlayerController : MonoBehaviour
             moveSpeed = 0.4f;
         }*/
         transform.Translate(h * Speed, 0, v * Speed);
-        if (isRangeNPC && Keyboard.current.eKey.isPressed)
+        if (isRangeNPC && Keyboard.current.eKey.isPressed)      //プレイヤーの距離内かつEキーが押されたとき
         {
             Debug.Log("E Pressed");
             ActionText.text = "";
-            MessageText.text = "Good job!";
+            success++;
+            MessageText.text = "Good job!";                     //成功のメッセージを出力
+            SuccessText.text = "SUCCESS  :  " + success;        //成功した数をUIに反映
         }
     }
 
@@ -91,12 +100,14 @@ public class PlayerController : MonoBehaviour
         }
         if (other.gameObject.CompareTag("Item"))
         {
-            ActionText.text = "Pick E key";
+            PickText.text = "Pick E key";
+            isRangeNPC = false;
             if(Keyboard.current.eKey.isPressed)
             {
-                ActionText.text = "";
+                PickText.text = "";
                 MessageText.text = "";
                 Destroy(other.gameObject);
+                haveBall++;
                 bulletObject.SetActive(true);
             }
             //isRangeNPC = true;

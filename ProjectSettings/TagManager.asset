@@ -8,6 +8,7 @@ TagManager:
   - NPC
   - Action
   - Item
+  - Wall
   layers:
   - Default
   - TransparentFX

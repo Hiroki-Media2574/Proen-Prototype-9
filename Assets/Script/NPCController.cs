@@ -24,6 +24,7 @@ public class NPCController : MonoBehaviour
             // 当たったオブジェクトの名前をコンソールに表示
             Debug.Log("当たったオブジェクト: " + hit.collider.name);
             transform.LookAt(target);
+            PlayerController.MP -= Time.deltaTime * 4;
         }
         //transform.LookAt(target);
     }
