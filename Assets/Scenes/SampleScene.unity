@@ -877,13 +877,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.2588191, y: 0, z: 0, w: 0.9659258}
-  m_LocalPosition: {x: 0, y: 3, z: -20}
+  m_LocalRotation: {x: 0.13052616, y: 0, z: 0, w: 0.9914449}
+  m_LocalPosition: {x: 0, y: 2, z: -20}
   m_LocalScale: {x: 6, y: 0.4, z: 0.22222225}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 993122578}
-  m_LocalEulerAnglesHint: {x: 30, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 15, y: 0, z: 0}
 --- !u!114 &330585547
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2705,7 +2705,7 @@ Rigidbody:
   m_UseGravity: 1
   m_IsKinematic: 0
   m_Interpolate: 0
-  m_Constraints: 112
+  m_Constraints: 80
   m_CollisionDetection: 0
 --- !u!114 &993122580
 MonoBehaviour:
@@ -2719,8 +2719,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c1885b384c9cda24582ec5349afa4ac9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerController
-  moveSpeed: 0.15
-  dashSpeed: 0.3
+  moveSpeed: 10
+  dashSpeed: 20
+  cameraTransform: {fileID: 330585546}
+  mouseSensitivity: 5
   ActionText: {fileID: 1523813281}
   MessageText: {fileID: 1477640453}
   PickText: {fileID: 1477640453}
@@ -2728,8 +2730,8 @@ MonoBehaviour:
   MPText: {fileID: 1121263588}
   bulletObject: {fileID: 276135459}
   SeikouSE: {fileID: 8300000, guid: 8da01852e9ec8ed469cd294ec73be39b, type: 3}
-  JampSE: {fileID: 0}
-  asioto1: {fileID: 0}
+  JampSE: {fileID: 8300000, guid: d02af9c0da16a784e8c70fde2b31f6b9, type: 3}
+  asioto1: {fileID: 8300000, guid: d02af9c0da16a784e8c70fde2b31f6b9, type: 3}
 --- !u!82 &993122581
 AudioSource:
   m_ObjectHideFlags: 0
