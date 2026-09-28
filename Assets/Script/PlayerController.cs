@@ -22,6 +22,13 @@ public class PlayerController : MonoBehaviour
     private int haveBall = 0;
     private int success = 0;
     public static float MP = 100;
+
+    //sound
+    AudioSource ongen;
+    private AudioSource footstepAudio;
+    [SerializeField] private AudioClip SeikouSE;
+    [SerializeField] private AudioClip JampSE;
+    [SerializeField] private AudioClip asioto1;
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
@@ -29,6 +36,12 @@ public class PlayerController : MonoBehaviour
         playerRenderer = GetComponent<Renderer>();
         Speed = moveSpeed;
         bulletObject.SetActive(false);
+        //sound
+        ongen = GetComponent<AudioSource>();
+        footstepAudio = gameObject.AddComponent<AudioSource>();
+        footstepAudio.clip = asioto1;
+        footstepAudio.loop = true;
+        footstepAudio.playOnAwake = false;
     }
 
     // Update is called once per frame
@@ -65,14 +78,32 @@ public class PlayerController : MonoBehaviour
             moveSpeed = 0.4f;
         }*/
         transform.Translate(h * Speed, 0, v * Speed);
-        if (isRangeNPC && Keyboard.current.eKey.isPressed)      //プレイヤーの距離内かつEキーが押されたとき
+        if (isRangeNPC && Keyboard.current.eKey.wasPressedThisFrame)      //プレイヤーの距離内かつEキーが押されたとき
         {
             Debug.Log("E Pressed");
             ActionText.text = "";
             success++;
             MessageText.text = "Good job!";                     //成功のメッセージを出力
             SuccessText.text = "SUCCESS  :  " + success;        //成功した数をUIに反映
+            //sound
+            ongen.PlayOneShot(SeikouSE);
         }
+        // sound
+        if ((h != 0 || v != 0) && isGrounded)
+        {
+            if (!footstepAudio.isPlaying)
+            {
+                footstepAudio.Play();
+            }
+        }
+        else
+        {
+            if (footstepAudio.isPlaying)
+            {
+                footstepAudio.Stop();
+            }
+        }
+
     }
 
     private void OnCollisionEnter(Collision collision)
