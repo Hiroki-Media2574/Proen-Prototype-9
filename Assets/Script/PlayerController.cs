@@ -6,7 +6,7 @@ using TMPro;
 public class PlayerController : MonoBehaviour
 {
     Rigidbody rb;
-    public float moveSpeed = 5.0f; // ※TranslateにTime.deltaTimeを掛けるため、値を少し大きめ（例: 5程度）に設定してください
+    public float moveSpeed = 5.0f; // ※TranslateにTime.deltaTimeを掛けるため、値を少し大きめに
     public float dashSpeed = 10.0f;
 
     [Header("Camera & Mouse Settings")]
