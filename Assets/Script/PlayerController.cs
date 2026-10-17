@@ -19,11 +19,14 @@ public class PlayerController : MonoBehaviour
     public TextMeshProUGUI PickText;
     public TextMeshProUGUI SuccessText;
     public TextMeshProUGUI MPText;
+    public TextMeshProUGUI BallCountText;
     public GameObject bulletObject;
+    private GameObject currentItem = null;
     private float Speed = 0.0f;
     int jumpCount = 0;
     private bool isGrounded = true;
     private bool isRangeNPC = false;
+    private bool isRangeItem = false;
     private Renderer playerRenderer;
     private int haveBall = 0;
     private int success = 0;
@@ -95,6 +98,7 @@ public class PlayerController : MonoBehaviour
         }
 
         MPText.text = "MP  :  " + MP;
+        BallCountText.text = "BALL  :  " + haveBall;
 
         // 3. Eキーのアクション判定（Updateで行うと押し損ねを防げます）
         if (isRangeNPC && Keyboard.current.eKey.wasPressedThisFrame)
@@ -105,6 +109,20 @@ public class PlayerController : MonoBehaviour
             MessageText.text = "Good job!";
             SuccessText.text = "SUCCESS  :  " + success;
             ongen.PlayOneShot(SeikouSE);
+        }
+        if (isRangeItem && Keyboard.current.eKey.wasPressedThisFrame)
+        {
+            Debug.Log("E Pressed");
+            PickText.text = "";
+            MessageText.text = "";
+            // 対象のアイテムオブジェクトが存在する場合、削除して各種処理を実行
+            if (currentItem != null)
+            {
+                Destroy(currentItem); // アイテムオブジェクトを削除
+                currentItem = null;   // 参照をクリア
+                haveBall++;           // ボールの所持数を加算
+                bulletObject.SetActive(true); // 弾オブジェクトを有効化
+            }
         }
 
         // Escキーでカーソルロック解除（動作確認・デバッグ用）
@@ -163,19 +181,22 @@ public class PlayerController : MonoBehaviour
         {
             ActionText.text = "Press E key!";
             isRangeNPC = true;
+            isRangeItem = false;
         }
         if (other.gameObject.CompareTag("Item"))
         {
+            currentItem = other.gameObject;
             PickText.text = "Pick E key";
             isRangeNPC = false;
-            if (Keyboard.current.eKey.isPressed)
+            isRangeItem = true;
+            /*if (Keyboard.current.eKey.isPressed)
             {
-                PickText.text = "";
-                MessageText.text = "";
+                //PickText.text = "";
+                //MessageText.text = "";
                 Destroy(other.gameObject);
-                haveBall++;
-                bulletObject.SetActive(true);
-            }
+                //haveBall++;
+                //bulletObject.SetActive(true);
+            }*/
         }
     }
 

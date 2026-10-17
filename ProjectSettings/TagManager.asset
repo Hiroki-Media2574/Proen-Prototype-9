@@ -9,6 +9,7 @@ TagManager:
   - Action
   - Item
   - Wall
+  - Target
   layers:
   - Default
   - TransparentFX
