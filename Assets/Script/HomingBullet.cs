@@ -45,30 +45,34 @@ public class HomingBullet : MonoBehaviour
 
     private void OnCollisionEnter(Collision collision)
     {
-        // すでに何かに命中して追尾終了している場合は二重処理を防ぐ
         if (!isHoming) return;
 
         // "Target" タグに当たった場合の処理
         if (collision.gameObject.CompareTag("Target"))
         {
-            Debug.Log("Targetに命中！");
+            Debug.Log("Targetに命中！減速しながら落下を開始させます。");
 
-            // --- 【処理1】 Targetオブジェクトを落下させる ---
             GameObject targetObj = collision.gameObject;
             Rigidbody targetRb = targetObj.GetComponent<Rigidbody>();
             if (targetRb == null)
             {
-                // Rigidbodyが付いていない場合は動的に追加
                 targetRb = targetObj.AddComponent<Rigidbody>();
             }
-            // 物理挙動と重力を有効化して落下を開始させる
+
+            // 物理挙動と重力を有効化
             targetRb.isKinematic = false;
             targetRb.useGravity = true;
 
-            // --- 【処理2】 弾の追尾を停止し、物理に従って落下させる ---
+            // --- 【追加】 落下後に少しずつ速度が落ちて完全に止まるよう抵抗（減衰）を設定 ---
+            // ※Unity 6のプロパティ名です（旧Unityバージョンの場合は drag / angularDrag）
+            targetRb.linearDamping = 2.0f;  // 移動速度に対する減衰抵抗
+            targetRb.angularDamping = 2.0f; // 回転速度に対する減衰抵抗
+
+            // NPCが「落とされたTarget」だと判別できるように名前を変更
+            targetObj.name = "FallenTarget";
+
             StopHomingAndFall();
         }
-        // 地面や壁などに当たった場合も追尾を止めて落下させる
         else if (collision.gameObject.CompareTag("Ground") || collision.gameObject.CompareTag("Wall"))
         {
             StopHomingAndFall();

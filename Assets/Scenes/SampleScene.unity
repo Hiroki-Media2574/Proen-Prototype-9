@@ -8750,7 +8750,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1366102787}
   - component: {fileID: 1366102790}
-  - component: {fileID: 1366102789}
   - component: {fileID: 1366102788}
   - component: {fileID: 1366102791}
   m_Layer: 0
@@ -8819,14 +8818,6 @@ MonoBehaviour:
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
   m_Version: 2
---- !u!81 &1366102789
-AudioListener:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1366102786}
-  m_Enabled: 1
 --- !u!20 &1366102790
 Camera:
   m_ObjectHideFlags: 0
@@ -9154,11 +9145,16 @@ MonoBehaviour:
   obstacleMask:
     serializedVersion: 2
     m_Bits: 128
-  moveSpeed: 4
+  moveSpeed: 6
   moveDuration: 3
   waitDuration: 2
   viewMeshFilter: {fileID: 403925842}
   meshResolution: 150
+  rightArm: {fileID: 998712222}
+  leftArm: {fileID: 1173658832}
+  armRotateAxis: 0
+  raiseAngle: -90
+  armKeepDuration: 1.5
   MessageText: {fileID: 0}
 --- !u!54 &1406315002
 Rigidbody:
@@ -11302,11 +11298,16 @@ MonoBehaviour:
   obstacleMask:
     serializedVersion: 2
     m_Bits: 128
-  moveSpeed: 4
+  moveSpeed: 6
   moveDuration: 3
   waitDuration: 2
   viewMeshFilter: {fileID: 371557284}
   meshResolution: 150
+  rightArm: {fileID: 1268623932}
+  leftArm: {fileID: 262574236}
+  armRotateAxis: 0
+  raiseAngle: -180
+  armKeepDuration: 1.5
   MessageText: {fileID: 0}
 --- !u!1 &1799273184
 GameObject:

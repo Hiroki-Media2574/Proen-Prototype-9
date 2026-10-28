@@ -43,7 +43,6 @@ public class PlayerController : MonoBehaviour
     private AudioSource footstepAudio;
     [SerializeField] private AudioClip SeikouSE;
     [SerializeField] private AudioClip JampSE;
-    //[SerializeField] private AudioClip asioto1;
 
     void Start()
     {
@@ -65,7 +64,6 @@ public class PlayerController : MonoBehaviour
         // sound
         ongen = GetComponent<AudioSource>();
         footstepAudio = gameObject.AddComponent<AudioSource>();
-        //footstepAudio.clip = asioto1;
         footstepAudio.loop = true;
         footstepAudio.playOnAwake = false;
 
@@ -117,9 +115,8 @@ public class PlayerController : MonoBehaviour
         {
             Debug.Log("E Pressed");
             ActionText.text = "";
-            success++;
+            AddSuccessCount(); // スコア加算と表示更新
             MessageText.text = "Good job!";
-            SuccessText.text = "SUCCESS  :  " + success;
             ongen.PlayOneShot(SeikouSE);
         }
 
@@ -154,6 +151,22 @@ public class PlayerController : MonoBehaviour
     }
 
     /// <summary>
+    /// NPC等が成功数（SuccessCount）を加算してUIに反映させるための外部用メソッド
+    /// </summary>
+    public void AddSuccessCount()
+    {
+        success++;
+        if (SuccessText != null)
+        {
+            SuccessText.text = "SUCCESS  :  " + success;
+        }
+        if (ongen != null && SeikouSE != null)
+        {
+            ongen.PlayOneShot(SeikouSE);
+        }
+    }
+
+    /// <summary>
     /// ボール（弾）を生成して最も近い Target へ向けて打ち出す処理
     /// </summary>
     private void ShootBall()
@@ -170,14 +183,13 @@ public class PlayerController : MonoBehaviour
         // ボールオブジェクトを生成
         GameObject ball = Instantiate(bulletPrefab, spawnPos, spawnRot);
 
-        // --- 【追加】 プレイヤー自身と生成したボールの物理衝突を無視する処理 ---
+        // プレイヤー自身と生成したボールの物理衝突を無視
         Collider ballCollider = ball.GetComponent<Collider>();
         Collider[] playerColliders = GetComponentsInChildren<Collider>();
         if (ballCollider != null)
         {
             foreach (Collider playerCol in playerColliders)
             {
-                // 手元の見た目用ボール以外のプレイヤーColliderとの衝突を無視
                 if (playerCol != ballCollider)
                 {
                     Physics.IgnoreCollision(ballCollider, playerCol);
@@ -192,31 +204,25 @@ public class PlayerController : MonoBehaviour
         HomingBullet homing = ball.GetComponent<HomingBullet>();
         if (homing != null)
         {
-            // 追尾対象と速度をアタッチしたスクリプトに渡す
             homing.target = closestTarget;
             homing.speed = bulletSpeed;
         }
         else
         {
-            // HomingBullet が無い場合のフォールバック処理
             Rigidbody ballRb = ball.GetComponent<Rigidbody>();
             if (ballRb != null)
             {
                 Vector3 shootDirection = cameraTransform.forward;
-
                 if (closestTarget != null)
                 {
                     shootDirection = (closestTarget.position - spawnPos).normalized;
                 }
-
                 ballRb.linearVelocity = shootDirection * bulletSpeed;
             }
         }
 
-        // 5秒後に自動消去
         Destroy(ball, 5.0f);
 
-        // ボールの所持数を減らし、手元の見た目を更新
         haveBall--;
         if (haveBall <= 0)
         {
@@ -252,11 +258,9 @@ public class PlayerController : MonoBehaviour
         float h = Input.GetAxis("Horizontal");
         float v = Input.GetAxis("Vertical");
 
-        // プレイヤーの向いている方向（ローカル座標）基準で移動する
         Vector3 moveDir = transform.right * h + transform.forward * v;
         rb.MovePosition(rb.position + moveDir * Speed * Time.fixedDeltaTime);
 
-        // 足音の再生制御
         if ((h != 0 || v != 0) && isGrounded)
         {
             if (!footstepAudio.isPlaying)

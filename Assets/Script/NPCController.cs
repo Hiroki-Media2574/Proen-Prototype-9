@@ -14,178 +14,274 @@ public class NPCController : MonoBehaviour
     public LayerMask obstacleMask;
 
     [Header("うろうろ（徘徊）設定")]
-    // 移動スピード
     public float moveSpeed = 2.0f;
-    // 1回の移動時間（秒）
     public float moveDuration = 3.0f;
-    // 1回の停止時間（秒）
     public float waitDuration = 2.0f;
 
     [Header("視界の可視化設定")]
-    // 視界メッシュの描画を担当する子オブジェクトのMeshFilter
     public MeshFilter viewMeshFilter;
-    // 視界メッシュの滑らかさ（分割数）
     public int meshResolution = 30;
 
-    // 成功時等のメッセージ表示用UI
+    [Header("NPCの腕用オブジェクト設定")]
+    public GameObject rightArm;
+    public GameObject leftArm;
+
+    public enum RotateAxis { XAxis, YAxis, ZAxis }
+    [Header("腕を上げる回転設定")]
+    public RotateAxis armRotateAxis = RotateAxis.XAxis;
+    public float raiseAngle = -180f;
+    public float armKeepDuration = 1.5f;
+
     public TextMeshProUGUI MessageText;
 
-    // 動的に生成する視界用のメッシュ
     private Mesh viewMesh;
+    private float stateTimer = 0.0f;
+    private bool isMoving = false;
 
-    // 徘徊処理用の内部変数
-    private float stateTimer = 0.0f;    // 状態切り替え用のタイマー
-    private bool isMoving = false;      // 現在移動中かどうか
-    private Vector3 moveDirection;      // 現在進行中の移動方向
+    private Transform fallenTargetTransform = null;
+
+    private Quaternion initialRightArmRotation;
+    private Quaternion initialLeftArmRotation;
+    private float armResetTimer = 0.0f;
+    private bool isArmsRaised = false;
 
     void Start()
     {
-        // 視界描画用のメッシュを新しく作成して初期化
         viewMesh = new Mesh();
         viewMesh.name = "View Mesh";
 
-        // viewMeshFilterが設定されている場合のみメッシュをセット
         if (viewMeshFilter != null)
         {
             viewMeshFilter.mesh = viewMesh;
         }
-        else
-        {
-            Debug.LogWarning("viewMeshFilter が設定されていません。Inspectorで子オブジェクトのMeshFilterを割り当ててください。");
-        }
 
-        // 最初の移動方向をランダムに決定してスタート
+        // 腕の初期ローカル回転を保存
+        if (rightArm != null) initialRightArmRotation = rightArm.transform.localRotation;
+        if (leftArm != null) initialLeftArmRotation = leftArm.transform.localRotation;
+
         SetNewRandomDirection();
     }
 
     void Update()
     {
-        // ターゲットが存在し、視界内にいる場合の処理
+        // バンザイ状態のタイマー管理
+        if (isArmsRaised)
+        {
+            armResetTimer += Time.deltaTime;
+            if (armResetTimer >= armKeepDuration)
+            {
+                isArmsRaised = false; // 時間経過でバンザイ解除
+            }
+        }
+
+        // 1. プレイヤーが視界内にいる場合
         if (target != null && IsTargetInSight())
         {
-            Debug.Log("プレイヤーを視界内に捕捉！移動を停止します。");
-
-            // 1. プレイヤーの方向を向く（高さを合わせて傾かないようにする）
             Vector3 targetPosition = new Vector3(target.position.x, transform.position.y, target.position.z);
             transform.LookAt(targetPosition);
-
-            // 2. プレイヤーのMPを減らす処理
             PlayerController.MP -= Time.deltaTime * 4;
+            return;
+        }
 
-            // ※視界内に入っている間は下の徘徊処理を行わない（立ち止まる）
+        // 2. 落とされたTargetがあるか探索
+        FindFallenTarget();
+
+        // 3. 追尾・移動
+        if (fallenTargetTransform != null)
+        {
+            MoveToFallenTarget();
         }
         else
         {
-            // プレイヤーが視界外の時は「うろうろ（徘徊）」処理を実行
             WanderBehavior();
         }
     }
 
+    /// <summary>
+    /// アニメーション処理の後に実行されるLateUpdateで腕の回転を強制反映
+    /// </summary>
     void LateUpdate()
     {
-        // 毎フレーム視界メッシュを更新して描画
+        // 1. 視界メッシュの描画
         DrawFieldOfView();
+
+        // 2. バンザイ状態の場合は Animator の上書き後に腕の回転を強制適用
+        if (isArmsRaised)
+        {
+            ApplyRaiseArmRotation();
+        }
+    }
+
+    private void FindFallenTarget()
+    {
+        GameObject fallenObj = GameObject.Find("FallenTarget");
+
+        if (fallenObj == null)
+        {
+            fallenTargetTransform = null;
+            return;
+        }
+
+        NPCController[] allNPCs = FindObjectsByType<NPCController>(FindObjectsSortMode.None);
+        NPCController closestNPC = null;
+        float minDistance = Mathf.Infinity;
+
+        foreach (NPCController npc in allNPCs)
+        {
+            float distance = Vector3.Distance(npc.transform.position, fallenObj.transform.position);
+            if (distance < minDistance)
+            {
+                minDistance = distance;
+                closestNPC = npc;
+            }
+        }
+
+        if (closestNPC == this)
+        {
+            fallenTargetTransform = fallenObj.transform;
+        }
+        else
+        {
+            fallenTargetTransform = null;
+        }
+    }
+
+    private void MoveToFallenTarget()
+    {
+        if (fallenTargetTransform == null) return;
+
+        Vector3 targetPos = new Vector3(fallenTargetTransform.position.x, transform.position.y, fallenTargetTransform.position.z);
+        transform.LookAt(targetPos);
+        transform.Translate(Vector3.forward * moveSpeed * Time.deltaTime);
+
+        float distanceToTarget = Vector3.Distance(transform.position, fallenTargetTransform.position);
+
+        if (distanceToTarget <= 3.0f)
+        {
+            CollectTarget(fallenTargetTransform.gameObject);
+        }
+    }
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (collision.gameObject.name == "FallenTarget" || collision.gameObject.CompareTag("Target"))
+        {
+            CollectTarget(collision.gameObject);
+        }
+    }
+
+    private void CollectTarget(GameObject targetObject)
+    {
+        if (targetObject == null) return;
+
+        Debug.Log($"SUCCESS: [{gameObject.name}] が Target を回収・消去し、腕を上げます！");
+
+        // バンザイフラグをONにする
+        isArmsRaised = true;
+        armResetTimer = 0.0f;
+
+        if (target != null)
+        {
+            PlayerController player = target.GetComponent<PlayerController>();
+            if (player != null)
+            {
+                player.AddSuccessCount();
+            }
+        }
+
+        Destroy(targetObject);
+        fallenTargetTransform = null;
     }
 
     /// <summary>
-    /// 一定間隔で「移動」と「停止」を繰り返してうろうろする処理
+    /// Animatorの上書きに負けないようにLateUpdate内で両腕を回転させるメソッド
     /// </summary>
+    private void ApplyRaiseArmRotation()
+    {
+        Vector3 rotateEuler = Vector3.zero;
+        switch (armRotateAxis)
+        {
+            case RotateAxis.XAxis: rotateEuler = new Vector3(raiseAngle, 0, 0); break;
+            case RotateAxis.YAxis: rotateEuler = new Vector3(0, raiseAngle, 0); break;
+            case RotateAxis.ZAxis: rotateEuler = new Vector3(0, 0, raiseAngle); break;
+        }
+
+        Quaternion armRotation = Quaternion.Euler(rotateEuler);
+
+        if (rightArm != null)
+        {
+            rightArm.transform.localRotation = initialRightArmRotation * armRotation;
+        }
+        else
+        {
+            Debug.LogWarning($"[{gameObject.name}] rightArm が Inspector でアタッチされていません！");
+        }
+
+        if (leftArm != null)
+        {
+            leftArm.transform.localRotation = initialLeftArmRotation * armRotation;
+        }
+        else
+        {
+            Debug.LogWarning($"[{gameObject.name}] leftArm が Inspector でアタッチされていません！");
+        }
+    }
+
     private void WanderBehavior()
     {
-        // タイマーを進める
         stateTimer += Time.deltaTime;
-
         if (isMoving)
         {
-            // --- 移動中 ---
-            // 進行方向へ移動する
             transform.Translate(Vector3.forward * moveSpeed * Time.deltaTime);
-
-            // 設定した移動時間を超えたら停止状態へ移行
             if (stateTimer >= moveDuration)
             {
                 isMoving = false;
-                stateTimer = 0.0f; // タイマーリセット
+                stateTimer = 0.0f;
             }
         }
         else
         {
-            // --- 停止中 ---
-            // 設定した停止時間を超えたら新しい方向を決めて移動状態へ移行
             if (stateTimer >= waitDuration)
             {
                 SetNewRandomDirection();
                 isMoving = true;
-                stateTimer = 0.0f; // タイマーリセット
+                stateTimer = 0.0f;
             }
         }
     }
 
-    /// <summary>
-    /// 新しい移動方向をランダムに決定してNPCの向きを変えるメソッド
-    /// </summary>
     private void SetNewRandomDirection()
     {
-        // Y軸の回転角度をランダム（0〜360度）に取得
         float randomAngle = Random.Range(0f, 360f);
-        // NPCの向きをランダムな角度に変更
         transform.rotation = Quaternion.Euler(0, randomAngle, 0);
     }
 
-    /// <summary>
-    /// 扇形視界の中にターゲットがいるかを判定するメソッド
-    /// </summary>
     private bool IsTargetInSight()
     {
-        // プレイヤーへの方向ベクトルと距離を計算
         Vector3 dirToTarget = (target.position - transform.position);
         float distanceToTarget = dirToTarget.magnitude;
-
-        // 距離チェック（最大距離より遠い場合は視界外）
         if (distanceToTarget > viewDistance) return false;
-
-        // 方向を正規化して角度チェック（正面からの角度が指定角度の半分より大きい場合は視界外）
         dirToTarget.Normalize();
         float angleToTarget = Vector3.Angle(transform.forward, dirToTarget);
-
         if (angleToTarget > viewAngle / 2.0f) return false;
-
-        // 遮蔽物チェック（NPCからプレイヤー間に障害物レイヤーがある場合は視界外）
-        if (Physics.Raycast(transform.position, dirToTarget, distanceToTarget, obstacleMask))
-        {
-            return false;
-        }
-
-        // すべての判定をクリアした場合のみ視認成功
+        if (Physics.Raycast(transform.position, dirToTarget, distanceToTarget, obstacleMask)) return false;
         return true;
     }
 
-    /// <summary>
-    /// ゲーム画面内に視界メッシュを動的生成するメソッド
-    /// </summary>
     private void DrawFieldOfView()
     {
-        // viewMeshFilterが未設定の場合は描画処理をスキップ
         if (viewMeshFilter == null) return;
-
         int stepCount = meshResolution;
         float stepAngleSize = viewAngle / stepCount;
-
-        // ポリゴン形成に必要な頂点配列と三角形インデックス配列を定義
         Vector3[] vertices = new Vector3[stepCount + 2];
         int[] triangles = new int[stepCount * 3];
-
-        // 頂点の中心点（描画を担当する子オブジェクトのローカル原点）
         vertices[0] = Vector3.zero;
 
-        // 扇形の外周頂点を計算
         for (int i = 0; i <= stepCount; i++)
         {
             float angle = -viewAngle / 2.0f + stepAngleSize * i;
             Vector3 dir = DirectionFromAngle(angle, false);
-
             RaycastHit hit;
-            // レイキャストを飛ばし、障害物に当たった場合はその位置まで、当たらない場合は最大距離まで伸ばす
             if (Physics.Raycast(transform.position, dir, out hit, viewDistance, obstacleMask))
             {
                 vertices[i + 1] = viewMeshFilter.transform.InverseTransformPoint(hit.point);
@@ -195,8 +291,6 @@ public class NPCController : MonoBehaviour
                 Vector3 targetPoint = transform.position + dir * viewDistance;
                 vertices[i + 1] = viewMeshFilter.transform.InverseTransformPoint(targetPoint);
             }
-
-            // 三角形ポリゴン（面の情報）を構築
             if (i < stepCount)
             {
                 triangles[i * 3] = 0;
@@ -204,23 +298,15 @@ public class NPCController : MonoBehaviour
                 triangles[i * 3 + 2] = i + 2;
             }
         }
-
-        // 生成した頂点データをメッシュに反映
         viewMesh.Clear();
         viewMesh.vertices = vertices;
         viewMesh.triangles = triangles;
         viewMesh.RecalculateNormals();
     }
 
-    /// <summary>
-    /// NPCの現在の向きを考慮して、角度から方向ベクトルを求めるヘルパーメソッド
-    /// </summary>
     private Vector3 DirectionFromAngle(float angleInDegrees, bool angleIsGlobal)
     {
-        if (!angleIsGlobal)
-        {
-            angleInDegrees += transform.eulerAngles.y;
-        }
+        if (!angleIsGlobal) angleInDegrees += transform.eulerAngles.y;
         return new Vector3(Mathf.Sin(angleInDegrees * Mathf.Deg2Rad), 0, Mathf.Cos(angleInDegrees * Mathf.Deg2Rad));
     }
 }
