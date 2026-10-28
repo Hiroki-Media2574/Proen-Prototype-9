@@ -6,7 +6,7 @@ using TMPro;
 public class PlayerController : MonoBehaviour
 {
     Rigidbody rb;
-    public float moveSpeed = 5.0f; // ※TranslateにTime.deltaTimeを掛けるため、値を少し大きめに
+    public float moveSpeed = 5.0f; // TranslateにTime.deltaTimeを掛けるため大きめに設定
     public float dashSpeed = 10.0f;
 
     [Header("Camera & Mouse Settings")]
@@ -14,13 +14,19 @@ public class PlayerController : MonoBehaviour
     public float mouseSensitivity = 2.0f; // マウス感度
     private float xRotation = 0.0f; // 上下の回転角度制限用
 
+    [Header("Shooting Settings")]
+    public GameObject bulletPrefab;     // 発射するボールのプレハブ
+    public Transform spawnPoint;        // ボールが出現する位置
+    public float bulletSpeed = 20.0f;   // ボールを飛ばすスピード
+    public string targetTag = "Target"; // 狙うターゲットのタグ名
+
     public TextMeshProUGUI ActionText;
     public TextMeshProUGUI MessageText;
     public TextMeshProUGUI PickText;
     public TextMeshProUGUI SuccessText;
     public TextMeshProUGUI MPText;
     public TextMeshProUGUI BallCountText;
-    public GameObject bulletObject;
+    public GameObject bulletObject;     // 手元のボール（見た目用）
     private GameObject currentItem = null;
     private float Speed = 0.0f;
     int jumpCount = 0;
@@ -37,7 +43,7 @@ public class PlayerController : MonoBehaviour
     private AudioSource footstepAudio;
     [SerializeField] private AudioClip SeikouSE;
     [SerializeField] private AudioClip JampSE;
-    [SerializeField] private AudioClip asioto1;
+    //[SerializeField] private AudioClip asioto1;
 
     void Start()
     {
@@ -46,6 +52,12 @@ public class PlayerController : MonoBehaviour
         Speed = moveSpeed;
         bulletObject.SetActive(false);
 
+        // 物理衝突によるプレイヤーの回転・転倒をコード側でも防止
+        if (rb != null)
+        {
+            rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
+        }
+
         // マウスカーソルを中央に固定して非表示にする
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
@@ -53,7 +65,7 @@ public class PlayerController : MonoBehaviour
         // sound
         ongen = GetComponent<AudioSource>();
         footstepAudio = gameObject.AddComponent<AudioSource>();
-        footstepAudio.clip = asioto1;
+        //footstepAudio.clip = asioto1;
         footstepAudio.loop = true;
         footstepAudio.playOnAwake = false;
 
@@ -100,7 +112,7 @@ public class PlayerController : MonoBehaviour
         MPText.text = "MP  :  " + MP;
         BallCountText.text = "BALL  :  " + haveBall;
 
-        // 3. Eキーのアクション判定（Updateで行うと押し損ねを防げます）
+        // 3. Eキーのアクション判定（NPC用）
         if (isRangeNPC && Keyboard.current.eKey.wasPressedThisFrame)
         {
             Debug.Log("E Pressed");
@@ -110,19 +122,27 @@ public class PlayerController : MonoBehaviour
             SuccessText.text = "SUCCESS  :  " + success;
             ongen.PlayOneShot(SeikouSE);
         }
+
+        // 4. Eキーのアクション判定（アイテム拾い用）
         if (isRangeItem && Keyboard.current.eKey.wasPressedThisFrame)
         {
             Debug.Log("E Pressed");
             PickText.text = "";
             MessageText.text = "";
-            // 対象のアイテムオブジェクトが存在する場合、削除して各種処理を実行
             if (currentItem != null)
             {
-                Destroy(currentItem); // アイテムオブジェクトを削除
-                currentItem = null;   // 参照をクリア
-                haveBall++;           // ボールの所持数を加算
-                bulletObject.SetActive(true); // 弾オブジェクトを有効化
+                Destroy(currentItem);
+                currentItem = null;
+                haveBall++;
+                bulletObject.SetActive(true);
             }
+            isRangeItem = false;
+        }
+
+        // 5. マウス左クリックによるボール発射処理
+        if (Mouse.current.leftButton.wasPressedThisFrame && haveBall > 0)
+        {
+            ShootBall();
         }
 
         // Escキーでカーソルロック解除（動作確認・デバッグ用）
@@ -131,6 +151,100 @@ public class PlayerController : MonoBehaviour
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
         }
+    }
+
+    /// <summary>
+    /// ボール（弾）を生成して最も近い Target へ向けて打ち出す処理
+    /// </summary>
+    private void ShootBall()
+    {
+        if (bulletPrefab == null)
+        {
+            Debug.LogWarning("bulletPrefab が設定されていません。Inspectorでセットしてください。");
+            return;
+        }
+
+        Vector3 spawnPos = (spawnPoint != null) ? spawnPoint.position : cameraTransform.position + cameraTransform.forward * 0.5f;
+        Quaternion spawnRot = (spawnPoint != null) ? spawnPoint.rotation : cameraTransform.rotation;
+
+        // ボールオブジェクトを生成
+        GameObject ball = Instantiate(bulletPrefab, spawnPos, spawnRot);
+
+        // --- 【追加】 プレイヤー自身と生成したボールの物理衝突を無視する処理 ---
+        Collider ballCollider = ball.GetComponent<Collider>();
+        Collider[] playerColliders = GetComponentsInChildren<Collider>();
+        if (ballCollider != null)
+        {
+            foreach (Collider playerCol in playerColliders)
+            {
+                // 手元の見た目用ボール以外のプレイヤーColliderとの衝突を無視
+                if (playerCol != ballCollider)
+                {
+                    Physics.IgnoreCollision(ballCollider, playerCol);
+                }
+            }
+        }
+
+        // シーン内の "Target" タグの中で最も距離が近いものを検索
+        Transform closestTarget = GetClosestTarget();
+
+        // 生成したボールに HomingBullet スクリプトが付いているかチェック
+        HomingBullet homing = ball.GetComponent<HomingBullet>();
+        if (homing != null)
+        {
+            // 追尾対象と速度をアタッチしたスクリプトに渡す
+            homing.target = closestTarget;
+            homing.speed = bulletSpeed;
+        }
+        else
+        {
+            // HomingBullet が無い場合のフォールバック処理
+            Rigidbody ballRb = ball.GetComponent<Rigidbody>();
+            if (ballRb != null)
+            {
+                Vector3 shootDirection = cameraTransform.forward;
+
+                if (closestTarget != null)
+                {
+                    shootDirection = (closestTarget.position - spawnPos).normalized;
+                }
+
+                ballRb.linearVelocity = shootDirection * bulletSpeed;
+            }
+        }
+
+        // 5秒後に自動消去
+        Destroy(ball, 5.0f);
+
+        // ボールの所持数を減らし、手元の見た目を更新
+        haveBall--;
+        if (haveBall <= 0)
+        {
+            bulletObject.SetActive(false);
+        }
+    }
+
+    /// <summary>
+    /// シーン内の "Target" タグを持つオブジェクトの中からプレイヤーに一番近いものを探すメソッド
+    /// </summary>
+    private Transform GetClosestTarget()
+    {
+        GameObject[] targets = GameObject.FindGameObjectsWithTag(targetTag);
+        Transform closest = null;
+        float minDistance = Mathf.Infinity;
+        Vector3 currentPosition = transform.position;
+
+        foreach (GameObject targetObj in targets)
+        {
+            float distance = Vector3.Distance(targetObj.transform.position, currentPosition);
+            if (distance < minDistance)
+            {
+                minDistance = distance;
+                closest = targetObj.transform;
+            }
+        }
+
+        return closest;
     }
 
     void FixedUpdate()
@@ -189,14 +303,6 @@ public class PlayerController : MonoBehaviour
             PickText.text = "Pick E key";
             isRangeNPC = false;
             isRangeItem = true;
-            /*if (Keyboard.current.eKey.isPressed)
-            {
-                //PickText.text = "";
-                //MessageText.text = "";
-                Destroy(other.gameObject);
-                //haveBall++;
-                //bulletObject.SetActive(true);
-            }*/
         }
     }
 

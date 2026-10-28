@@ -1,129 +1,202 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 using TMPro;
 
 public class NPCController : MonoBehaviour
 {
-    // ƒ^[ƒQƒbƒgiƒvƒŒƒCƒ„[j‚ÌTransform
+    // ã‚¿ãƒ¼ã‚²ãƒƒãƒˆï¼ˆãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ï¼‰ã®Transform
     public Transform target;
-    // ‹ŠE‚Ì“Í‚­Å‘å‹——£
+    // è¦–ç•Œã®å±Šãæœ€å¤§è·é›¢
     public float viewDistance = 10.0f;
-    // ‹ŠE‚ÌŠp“xi—á: 90“xj
+    // è¦–ç•Œã®è§’åº¦ï¼ˆä¾‹: 90åº¦ï¼‰
     [Range(0, 360)]
     public float viewAngle = 90.0f;
-    // ‹üÕ’f—p‚ÌáŠQ•¨ƒŒƒCƒ„[iWall‚È‚Çj
+    // è¦–ç·šé®æ–­ç”¨ã®éšœå®³ç‰©ãƒ¬ã‚¤ãƒ¤ãƒ¼ï¼ˆWallãªã©ï¼‰
     public LayerMask obstacleMask;
 
-    // ¬Œ÷“™‚ÌƒƒbƒZ[ƒW•\¦—pUI
-    public TextMeshProUGUI MessageText;
+    [Header("ã†ã‚ã†ã‚ï¼ˆå¾˜å¾Šï¼‰è¨­å®š")]
+    // ç§»å‹•ã‚¹ãƒ”ãƒ¼ãƒ‰
+    public float moveSpeed = 2.0f;
+    // 1å›ã®ç§»å‹•æ™‚é–“ï¼ˆç§’ï¼‰
+    public float moveDuration = 3.0f;
+    // 1å›ã®åœæ­¢æ™‚é–“ï¼ˆç§’ï¼‰
+    public float waitDuration = 2.0f;
 
-    [Header("‹ŠE‚Ì‰Â‹‰»İ’è")]
-    // ‹ŠEƒƒbƒVƒ…‚Ì•`‰æ‚ğ’S“–‚·‚éqƒIƒuƒWƒFƒNƒg‚ÌMeshFilter
+    [Header("è¦–ç•Œã®å¯è¦–åŒ–è¨­å®š")]
+    // è¦–ç•Œãƒ¡ãƒƒã‚·ãƒ¥ã®æç”»ã‚’æ‹…å½“ã™ã‚‹å­ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã®MeshFilter
     public MeshFilter viewMeshFilter;
-    // ‹ŠEƒƒbƒVƒ…‚ÌŠŠ‚ç‚©‚³i•ªŠ„”j
+    // è¦–ç•Œãƒ¡ãƒƒã‚·ãƒ¥ã®æ»‘ã‚‰ã‹ã•ï¼ˆåˆ†å‰²æ•°ï¼‰
     public int meshResolution = 30;
 
-    // “®“I‚É¶¬‚·‚é‹ŠE—p‚ÌƒƒbƒVƒ…
+    // æˆåŠŸæ™‚ç­‰ã®ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸è¡¨ç¤ºç”¨UI
+    public TextMeshProUGUI MessageText;
+
+    // å‹•çš„ã«ç”Ÿæˆã™ã‚‹è¦–ç•Œç”¨ã®ãƒ¡ãƒƒã‚·ãƒ¥
     private Mesh viewMesh;
+
+    // å¾˜å¾Šå‡¦ç†ç”¨ã®å†…éƒ¨å¤‰æ•°
+    private float stateTimer = 0.0f;    // çŠ¶æ…‹åˆ‡ã‚Šæ›¿ãˆç”¨ã®ã‚¿ã‚¤ãƒãƒ¼
+    private bool isMoving = false;      // ç¾åœ¨ç§»å‹•ä¸­ã‹ã©ã†ã‹
+    private Vector3 moveDirection;      // ç¾åœ¨é€²è¡Œä¸­ã®ç§»å‹•æ–¹å‘
 
     void Start()
     {
-        // ‹ŠE•`‰æ—p‚ÌƒƒbƒVƒ…‚ğV‚µ‚­ì¬‚µ‚Ä‰Šú‰»
+        // è¦–ç•Œæç”»ç”¨ã®ãƒ¡ãƒƒã‚·ãƒ¥ã‚’æ–°ã—ãä½œæˆã—ã¦åˆæœŸåŒ–
         viewMesh = new Mesh();
         viewMesh.name = "View Mesh";
 
-        // viewMeshFilter‚ªİ’è‚³‚ê‚Ä‚¢‚éê‡‚Ì‚İƒƒbƒVƒ…‚ğƒZƒbƒg
+        // viewMeshFilterãŒè¨­å®šã•ã‚Œã¦ã„ã‚‹å ´åˆã®ã¿ãƒ¡ãƒƒã‚·ãƒ¥ã‚’ã‚»ãƒƒãƒˆ
         if (viewMeshFilter != null)
         {
             viewMeshFilter.mesh = viewMesh;
         }
         else
         {
-            Debug.LogWarning("viewMeshFilter ‚ªİ’è‚³‚ê‚Ä‚¢‚Ü‚¹‚ñBInspector‚ÅqƒIƒuƒWƒFƒNƒg‚ÌMeshFilter‚ğŠ„‚è“–‚Ä‚Ä‚­‚¾‚³‚¢B");
+            Debug.LogWarning("viewMeshFilter ãŒè¨­å®šã•ã‚Œã¦ã„ã¾ã›ã‚“ã€‚Inspectorã§å­ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã®MeshFilterã‚’å‰²ã‚Šå½“ã¦ã¦ãã ã•ã„ã€‚");
         }
+
+        // æœ€åˆã®ç§»å‹•æ–¹å‘ã‚’ãƒ©ãƒ³ãƒ€ãƒ ã«æ±ºå®šã—ã¦ã‚¹ã‚¿ãƒ¼ãƒˆ
+        SetNewRandomDirection();
     }
 
     void Update()
     {
-        // ƒ^[ƒQƒbƒg‚ª‘¶İ‚µA‹ŠE“à‚É‚¢‚éê‡‚Ìˆ—
+        // ã‚¿ãƒ¼ã‚²ãƒƒãƒˆãŒå­˜åœ¨ã—ã€è¦–ç•Œå†…ã«ã„ã‚‹å ´åˆã®å‡¦ç†
         if (target != null && IsTargetInSight())
         {
-            Debug.Log("ƒvƒŒƒCƒ„[‚ğ‹ŠE“à‚É•ß‘¨I");
-            transform.LookAt(target);
-            // MP‚ğŒ¸‚ç‚·ˆ—
+            Debug.Log("ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ã‚’è¦–ç•Œå†…ã«æ•æ‰ï¼ç§»å‹•ã‚’åœæ­¢ã—ã¾ã™ã€‚");
+
+            // 1. ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ã®æ–¹å‘ã‚’å‘ãï¼ˆé«˜ã•ã‚’åˆã‚ã›ã¦å‚¾ã‹ãªã„ã‚ˆã†ã«ã™ã‚‹ï¼‰
+            Vector3 targetPosition = new Vector3(target.position.x, transform.position.y, target.position.z);
+            transform.LookAt(targetPosition);
+
+            // 2. ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ã®MPã‚’æ¸›ã‚‰ã™å‡¦ç†
             PlayerController.MP -= Time.deltaTime * 4;
+
+            // â€»è¦–ç•Œå†…ã«å…¥ã£ã¦ã„ã‚‹é–“ã¯ä¸‹ã®å¾˜å¾Šå‡¦ç†ã‚’è¡Œã‚ãªã„ï¼ˆç«‹ã¡æ­¢ã¾ã‚‹ï¼‰
+        }
+        else
+        {
+            // ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ãŒè¦–ç•Œå¤–ã®æ™‚ã¯ã€Œã†ã‚ã†ã‚ï¼ˆå¾˜å¾Šï¼‰ã€å‡¦ç†ã‚’å®Ÿè¡Œ
+            WanderBehavior();
         }
     }
 
     void LateUpdate()
     {
-        // –ˆƒtƒŒ[ƒ€‹ŠEƒƒbƒVƒ…‚ğXV‚µ‚Ä•`‰æ
+        // æ¯ãƒ•ãƒ¬ãƒ¼ãƒ è¦–ç•Œãƒ¡ãƒƒã‚·ãƒ¥ã‚’æ›´æ–°ã—ã¦æç”»
         DrawFieldOfView();
     }
 
     /// <summary>
-    /// îŒ`‹ŠE‚Ì’†‚Éƒ^[ƒQƒbƒg‚ª‚¢‚é‚©‚ğ”»’è‚·‚éƒƒ\ƒbƒh
+    /// ä¸€å®šé–“éš”ã§ã€Œç§»å‹•ã€ã¨ã€Œåœæ­¢ã€ã‚’ç¹°ã‚Šè¿”ã—ã¦ã†ã‚ã†ã‚ã™ã‚‹å‡¦ç†
+    /// </summary>
+    private void WanderBehavior()
+    {
+        // ã‚¿ã‚¤ãƒãƒ¼ã‚’é€²ã‚ã‚‹
+        stateTimer += Time.deltaTime;
+
+        if (isMoving)
+        {
+            // --- ç§»å‹•ä¸­ ---
+            // é€²è¡Œæ–¹å‘ã¸ç§»å‹•ã™ã‚‹
+            transform.Translate(Vector3.forward * moveSpeed * Time.deltaTime);
+
+            // è¨­å®šã—ãŸç§»å‹•æ™‚é–“ã‚’è¶…ãˆãŸã‚‰åœæ­¢çŠ¶æ…‹ã¸ç§»è¡Œ
+            if (stateTimer >= moveDuration)
+            {
+                isMoving = false;
+                stateTimer = 0.0f; // ã‚¿ã‚¤ãƒãƒ¼ãƒªã‚»ãƒƒãƒˆ
+            }
+        }
+        else
+        {
+            // --- åœæ­¢ä¸­ ---
+            // è¨­å®šã—ãŸåœæ­¢æ™‚é–“ã‚’è¶…ãˆãŸã‚‰æ–°ã—ã„æ–¹å‘ã‚’æ±ºã‚ã¦ç§»å‹•çŠ¶æ…‹ã¸ç§»è¡Œ
+            if (stateTimer >= waitDuration)
+            {
+                SetNewRandomDirection();
+                isMoving = true;
+                stateTimer = 0.0f; // ã‚¿ã‚¤ãƒãƒ¼ãƒªã‚»ãƒƒãƒˆ
+            }
+        }
+    }
+
+    /// <summary>
+    /// æ–°ã—ã„ç§»å‹•æ–¹å‘ã‚’ãƒ©ãƒ³ãƒ€ãƒ ã«æ±ºå®šã—ã¦NPCã®å‘ãã‚’å¤‰ãˆã‚‹ãƒ¡ã‚½ãƒƒãƒ‰
+    /// </summary>
+    private void SetNewRandomDirection()
+    {
+        // Yè»¸ã®å›è»¢è§’åº¦ã‚’ãƒ©ãƒ³ãƒ€ãƒ ï¼ˆ0ã€œ360åº¦ï¼‰ã«å–å¾—
+        float randomAngle = Random.Range(0f, 360f);
+        // NPCã®å‘ãã‚’ãƒ©ãƒ³ãƒ€ãƒ ãªè§’åº¦ã«å¤‰æ›´
+        transform.rotation = Quaternion.Euler(0, randomAngle, 0);
+    }
+
+    /// <summary>
+    /// æ‰‡å½¢è¦–ç•Œã®ä¸­ã«ã‚¿ãƒ¼ã‚²ãƒƒãƒˆãŒã„ã‚‹ã‹ã‚’åˆ¤å®šã™ã‚‹ãƒ¡ã‚½ãƒƒãƒ‰
     /// </summary>
     private bool IsTargetInSight()
     {
-        // ƒvƒŒƒCƒ„[‚Ö‚Ì•ûŒüƒxƒNƒgƒ‹‚Æ‹——£‚ğŒvZ
+        // ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ã¸ã®æ–¹å‘ãƒ™ã‚¯ãƒˆãƒ«ã¨è·é›¢ã‚’è¨ˆç®—
         Vector3 dirToTarget = (target.position - transform.position);
         float distanceToTarget = dirToTarget.magnitude;
 
-        // ‹——£ƒ`ƒFƒbƒNiÅ‘å‹——£‚æ‚è‰“‚¢ê‡‚Í‹ŠEŠOj
+        // è·é›¢ãƒã‚§ãƒƒã‚¯ï¼ˆæœ€å¤§è·é›¢ã‚ˆã‚Šé ã„å ´åˆã¯è¦–ç•Œå¤–ï¼‰
         if (distanceToTarget > viewDistance) return false;
 
-        // •ûŒü‚ğ³‹K‰»‚µ‚ÄŠp“xƒ`ƒFƒbƒNi³–Ê‚©‚ç‚ÌŠp“x‚ªw’èŠp“x‚Ì”¼•ª‚æ‚è‘å‚«‚¢ê‡‚Í‹ŠEŠOj
+        // æ–¹å‘ã‚’æ­£è¦åŒ–ã—ã¦è§’åº¦ãƒã‚§ãƒƒã‚¯ï¼ˆæ­£é¢ã‹ã‚‰ã®è§’åº¦ãŒæŒ‡å®šè§’åº¦ã®åŠåˆ†ã‚ˆã‚Šå¤§ãã„å ´åˆã¯è¦–ç•Œå¤–ï¼‰
         dirToTarget.Normalize();
         float angleToTarget = Vector3.Angle(transform.forward, dirToTarget);
 
         if (angleToTarget > viewAngle / 2.0f) return false;
 
-        // Õ•Á•¨ƒ`ƒFƒbƒNiNPC‚©‚çƒvƒŒƒCƒ„[ŠÔ‚ÉáŠQ•¨ƒŒƒCƒ„[‚ª‚ ‚éê‡‚Í‹ŠEŠOj
+        // é®è”½ç‰©ãƒã‚§ãƒƒã‚¯ï¼ˆNPCã‹ã‚‰ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼é–“ã«éšœå®³ç‰©ãƒ¬ã‚¤ãƒ¤ãƒ¼ãŒã‚ã‚‹å ´åˆã¯è¦–ç•Œå¤–ï¼‰
         if (Physics.Raycast(transform.position, dirToTarget, distanceToTarget, obstacleMask))
         {
             return false;
         }
 
-        // ‚·‚×‚Ä‚Ì”»’è‚ğƒNƒŠƒA‚µ‚½ê‡‚Ì‚İ‹”F¬Œ÷
+        // ã™ã¹ã¦ã®åˆ¤å®šã‚’ã‚¯ãƒªã‚¢ã—ãŸå ´åˆã®ã¿è¦–èªæˆåŠŸ
         return true;
     }
 
     /// <summary>
-    /// ƒQ[ƒ€‰æ–Ê“à‚É‹ŠEƒƒbƒVƒ…‚ğ“®“I¶¬‚·‚éƒƒ\ƒbƒh
+    /// ã‚²ãƒ¼ãƒ ç”»é¢å†…ã«è¦–ç•Œãƒ¡ãƒƒã‚·ãƒ¥ã‚’å‹•çš„ç”Ÿæˆã™ã‚‹ãƒ¡ã‚½ãƒƒãƒ‰
     /// </summary>
     private void DrawFieldOfView()
     {
-        // viewMeshFilter‚ª–¢İ’è‚Ìê‡‚Í•`‰æˆ—‚ğƒXƒLƒbƒv
+        // viewMeshFilterãŒæœªè¨­å®šã®å ´åˆã¯æç”»å‡¦ç†ã‚’ã‚¹ã‚­ãƒƒãƒ—
         if (viewMeshFilter == null) return;
 
         int stepCount = meshResolution;
         float stepAngleSize = viewAngle / stepCount;
 
-        // ƒ|ƒŠƒSƒ“Œ`¬‚É•K—v‚È’¸“_”z—ñ‚ÆOŠpŒ`ƒCƒ“ƒfƒbƒNƒX”z—ñ‚ğ’è‹`
+        // ãƒãƒªã‚´ãƒ³å½¢æˆã«å¿…è¦ãªé ‚ç‚¹é…åˆ—ã¨ä¸‰è§’å½¢ã‚¤ãƒ³ãƒ‡ãƒƒã‚¯ã‚¹é…åˆ—ã‚’å®šç¾©
         Vector3[] vertices = new Vector3[stepCount + 2];
         int[] triangles = new int[stepCount * 3];
 
-        // ƒƒbƒVƒ…‚Ì’†S“_iNPC‚Ì‘«Œ³/Œ´“_j
+        // é ‚ç‚¹ã®ä¸­å¿ƒç‚¹ï¼ˆæç”»ã‚’æ‹…å½“ã™ã‚‹å­ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã®ãƒ­ãƒ¼ã‚«ãƒ«åŸç‚¹ï¼‰
         vertices[0] = Vector3.zero;
 
-        // îŒ`‚ÌŠOü’¸“_‚ğŒvZ
+        // æ‰‡å½¢ã®å¤–å‘¨é ‚ç‚¹ã‚’è¨ˆç®—
         for (int i = 0; i <= stepCount; i++)
         {
             float angle = -viewAngle / 2.0f + stepAngleSize * i;
             Vector3 dir = DirectionFromAngle(angle, false);
 
             RaycastHit hit;
-            // ƒŒƒCƒLƒƒƒXƒg‚ğ”ò‚Î‚µAáŠQ•¨‚É“–‚½‚Á‚½ê‡‚Í‚»‚ÌˆÊ’u‚Ü‚ÅA“–‚½‚ç‚È‚¢ê‡‚ÍÅ‘å‹——£‚Ü‚ÅL‚Î‚·
+            // ãƒ¬ã‚¤ã‚­ãƒ£ã‚¹ãƒˆã‚’é£›ã°ã—ã€éšœå®³ç‰©ã«å½“ãŸã£ãŸå ´åˆã¯ãã®ä½ç½®ã¾ã§ã€å½“ãŸã‚‰ãªã„å ´åˆã¯æœ€å¤§è·é›¢ã¾ã§ä¼¸ã°ã™
             if (Physics.Raycast(transform.position, dir, out hit, viewDistance, obstacleMask))
             {
-                vertices[i + 1] = transform.InverseTransformPoint(hit.point);
+                vertices[i + 1] = viewMeshFilter.transform.InverseTransformPoint(hit.point);
             }
             else
             {
-                vertices[i + 1] = transform.InverseTransformPoint(transform.position + dir * viewDistance);
+                Vector3 targetPoint = transform.position + dir * viewDistance;
+                vertices[i + 1] = viewMeshFilter.transform.InverseTransformPoint(targetPoint);
             }
 
-            // OŠpŒ`ƒ|ƒŠƒSƒ“i–Ê‚Ìî•ñj‚ğ\’z
+            // ä¸‰è§’å½¢ãƒãƒªã‚´ãƒ³ï¼ˆé¢ã®æƒ…å ±ï¼‰ã‚’æ§‹ç¯‰
             if (i < stepCount)
             {
                 triangles[i * 3] = 0;
@@ -132,7 +205,7 @@ public class NPCController : MonoBehaviour
             }
         }
 
-        // ¶¬‚µ‚½’¸“_ƒf[ƒ^‚ğƒƒbƒVƒ…‚É”½‰f
+        // ç”Ÿæˆã—ãŸé ‚ç‚¹ãƒ‡ãƒ¼ã‚¿ã‚’ãƒ¡ãƒƒã‚·ãƒ¥ã«åæ˜ 
         viewMesh.Clear();
         viewMesh.vertices = vertices;
         viewMesh.triangles = triangles;
@@ -140,7 +213,7 @@ public class NPCController : MonoBehaviour
     }
 
     /// <summary>
-    /// NPC‚ÌŒ»İ‚ÌŒü‚«‚ğl—¶‚µ‚ÄAŠp“x‚©‚ç•ûŒüƒxƒNƒgƒ‹‚ğ‹‚ß‚éƒwƒ‹ƒp[ƒƒ\ƒbƒh
+    /// NPCã®ç¾åœ¨ã®å‘ãã‚’è€ƒæ…®ã—ã¦ã€è§’åº¦ã‹ã‚‰æ–¹å‘ãƒ™ã‚¯ãƒˆãƒ«ã‚’æ±‚ã‚ã‚‹ãƒ˜ãƒ«ãƒ‘ãƒ¼ãƒ¡ã‚½ãƒƒãƒ‰
     /// </summary>
     private Vector3 DirectionFromAngle(float angleInDegrees, bool angleIsGlobal)
     {
